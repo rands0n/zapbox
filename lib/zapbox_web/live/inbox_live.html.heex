@@ -1,0 +1,183 @@
+<main class="min-h-screen bg-zinc-50 text-zinc-900">
+  <header class="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
+    <div>
+      <h1 class="text-xl font-semibold">Zapbox</h1>
+      <p class="text-sm text-zinc-500">Local WhatsApp inbox</p>
+    </div>
+    <nav class="text-sm">
+      <a href={~p"/"} class="font-medium text-emerald-700">Inbox</a><a
+        href={~p"/controllers"}
+        class="ml-4 text-zinc-600"
+      >Controllers</a>
+    </nav>
+  </header>
+  <div class="grid min-h-[calc(100vh-73px)] grid-cols-1 lg:grid-cols-[22rem_1fr]">
+    <aside class="border-r border-zinc-200 bg-white">
+      <form phx-change="search" class="border-b p-3">
+        <input
+          name="query"
+          value={@query}
+          phx-debounce="200"
+          placeholder="Search phone, template or type"
+          class="w-full rounded border-zinc-300 text-sm"
+        />
+      </form>
+      <form phx-change="filter_controller" class="border-b p-3">
+        <select name="controller" class="w-full rounded border-zinc-300 text-sm">
+          <option value="all" selected={@controller_filter == "all"}>All controllers</option>
+          <option value="unknown" selected={@controller_filter == "unknown"}>Unknown</option>
+          <option :for={c <- @controllers} value={c.id} selected={@controller_filter == c.id}>
+            {c.name}
+          </option>
+        </select>
+      </form>
+      <div class="divide-y">
+        <button
+          :for={m <- @messages}
+          phx-click="select"
+          phx-value-id={m.id}
+          class={[
+            "block w-full px-4 py-3 text-left hover:bg-zinc-50",
+            @selected && @selected.id == m.id &&
+              "border-l-2 border-emerald-600 bg-emerald-50 pl-[14px]"
+          ]}
+        >
+          <p class="truncate text-xs font-semibold text-emerald-700">
+            {if c = controller_for(m, @controllers),
+              do: c.name,
+              else: "Unknown sender · #{m.phone_id}"}
+          </p>
+          <div class="mt-1 flex justify-between gap-2">
+            <span class="truncate font-medium">{m.to || "Unknown recipient"}</span><span class="text-[10px] font-bold text-zinc-500">{String.upcase(m.message_type || "message")}</span>
+          </div>
+          <p class="mt-1 truncate text-sm">{m.template_name || "Untitled request"}</p>
+          <div class="mt-1 flex justify-between text-xs text-zinc-500">
+            <span>{m.language || "—"}</span><span>{relative_time(m.inserted_at)}</span>
+          </div>
+        </button>
+        <p :if={@messages == []} class="p-6 text-center text-sm text-zinc-500">
+          No captured messages yet.
+        </p>
+      </div>
+    </aside>
+    <section :if={@selected} class="min-w-0 bg-white">
+      <div class="border-b px-6 py-5">
+        <div class="flex justify-between">
+          <div>
+            <p class="text-sm text-zinc-500">To</p>
+            <h2 class="text-2xl font-semibold">{@selected.to || "Unknown recipient"}</h2>
+          </div>
+          <span class="rounded bg-zinc-100 px-2 py-1 text-xs">
+            HTTP {@selected.response_status}
+          </span>
+        </div>
+        <dl class="mt-5 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+          <div>
+            <dt class="text-zinc-500">Controller</dt>
+            <dd class="font-medium">
+              {if c = controller_for(@selected, @controllers), do: c.name, else: "Unknown sender"}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-zinc-500">Phone ID</dt>
+            <dd class="font-medium">{@selected.phone_id}</dd>
+          </div>
+          <div>
+            <dt class="text-zinc-500">Template / language</dt>
+            <dd class="font-medium">
+              {(@selected.template_name || "—") <> " · " <> (@selected.language || "—")}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-zinc-500">Captured</dt>
+            <dd class="font-medium">
+              {Calendar.strftime(@selected.inserted_at, "%Y-%m-%d %H:%M UTC")}
+            </dd>
+          </div>
+        </dl>
+        <button
+          :if={!controller_for(@selected, @controllers)}
+          phx-click="register_controller"
+          class="mt-4 text-sm font-medium text-emerald-700"
+        >
+          Register controller
+        </button>
+        <div class="mt-4 text-xs">
+          <code id="message-id" class="rounded bg-zinc-100 px-2 py-1">
+            {@selected.wa_message_id}
+          </code>
+          <button
+            id="copy-message-id"
+            phx-hook="CopyText"
+            data-copy-target="#message-id"
+            class="ml-2 text-emerald-700"
+          >
+            Copy ID
+          </button>
+        </div>
+      </div>
+      <nav class="flex gap-5 border-b px-6">
+        <button
+          :for={
+            {key, label} <- [
+              {"preview", "Preview"},
+              {"payload", "Payload JSON"},
+              {"headers", "Headers"},
+              {"response", "Response"}
+            ]
+          }
+          phx-click="tab"
+          phx-value-tab={key}
+          class={["border-b-2 py-3 text-sm", @tab == key && "border-emerald-600 text-emerald-700"]}
+        >
+          {label}
+        </button>
+      </nav>
+      <div class="p-6">
+        <div :if={@tab == "preview"} class="space-y-5">
+          <div>
+            <p class="text-sm text-zinc-500">WhatsApp template</p>
+            <h3 class="text-xl font-semibold">
+              {@selected.template_name || "Untitled template"}
+            </h3>
+          </div>
+          <div>
+            <p class="text-sm text-zinc-500">Body parameters</p>
+            <ol class="mt-2 list-decimal pl-5">
+              <li :for={p <- params_for(@selected, "body")}>{param_value(p)}</li>
+            </ol>
+          </div>
+          <div :if={button_components(@selected) != []}>
+            <p class="text-sm text-zinc-500">Buttons</p>
+            <p :for={b <- button_components(@selected)}>
+              {String.upcase(b["sub_type"] || "button")} button #{b["index"] || ""}: {Enum.map_join(
+                b["parameters"] || [],
+                ", ",
+                &param_value/1
+              )}
+            </p>
+          </div>
+        </div>
+        <pre
+          :if={@tab == "payload"}
+          class="overflow-auto rounded bg-zinc-950 p-4 text-sm text-zinc-100"
+        >{json(@selected.request_body)}</pre>
+        <div :if={@tab == "headers"} class="divide-y rounded border">
+          <div
+            :for={{name, value} <- @selected.request_headers}
+            class="grid grid-cols-[12rem_1fr] px-4 py-2 text-sm"
+          >
+            <span class="font-medium">{name}</span><span class="break-all">{value}</span>
+          </div>
+        </div>
+        <pre
+          :if={@tab == "response"}
+          class="overflow-auto rounded bg-zinc-950 p-4 text-sm text-zinc-100"
+        >{json(@selected.response_body)}</pre>
+      </div>
+    </section>
+    <section :if={!@selected} class="grid place-items-center text-zinc-500">
+      Send a WhatsApp Cloud API request to see it here.
+    </section>
+  </div>
+</main>

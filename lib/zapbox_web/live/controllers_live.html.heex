@@ -1,0 +1,105 @@
+<main class="min-h-screen bg-zinc-50 text-zinc-900">
+  <header class="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
+    <div>
+      <h1 class="text-xl font-semibold">Zapbox</h1>
+      <p class="text-sm text-zinc-500">Local WhatsApp inbox</p>
+    </div>
+    <nav class="flex gap-4 text-sm">
+      <a href={~p"/"} class="text-zinc-600 hover:text-emerald-700">Inbox</a><a
+        href={~p"/controllers"}
+        class="font-medium text-emerald-700"
+      >Controllers</a>
+    </nav>
+  </header>
+  <div class="mx-auto max-w-4xl p-6">
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold">Controllers</h2>
+        <p class="text-sm text-zinc-500">Friendly names for WhatsApp sender phone IDs.</p>
+      </div>
+      <button
+        phx-click="new"
+        class="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white"
+      >
+        Add controller
+      </button>
+    </div>
+    <form
+      :if={@editing}
+      phx-submit="save"
+      class="mb-6 grid gap-4 border-y border-zinc-200 bg-white py-5"
+    >
+      <div>
+        <label class="text-sm font-medium">Name</label>
+        <input
+          name="controller[name]"
+          value={@form_controller.name}
+          class="mt-1 block w-full rounded border-zinc-300"
+        />
+        <p :if={@errors[:name]} class="mt-1 text-sm text-red-600">{@errors[:name]}</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Phone ID</label>
+        <input
+          name="controller[phone_id]"
+          value={@form_controller.phone_id}
+          class="mt-1 block w-full rounded border-zinc-300"
+        />
+        <p :if={@errors[:phone_id]} class="mt-1 text-sm text-red-600">{@errors[:phone_id]}</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium">
+          Description <span class="font-normal text-zinc-500">(optional)</span>
+        </label>
+        <textarea
+          name="controller[description]"
+          class="mt-1 block w-full rounded border-zinc-300"
+        >{@form_controller.description}</textarea>
+      </div>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="hidden" name="controller[enabled]" value="false" /><input
+          type="checkbox"
+          name="controller[enabled]"
+          value="true"
+          checked={@form_controller.enabled}
+        /> Enabled
+      </label>
+      <div>
+        <button class="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white">
+          Save controller
+        </button>
+        <a href={~p"/controllers"} class="ml-3 text-sm text-zinc-600">Cancel</a>
+      </div>
+    </form>
+    <div class="divide-y divide-zinc-200 border-y border-zinc-200 bg-white">
+      <div
+        :for={controller <- @controllers}
+        class="flex items-center justify-between gap-4 px-4 py-4"
+      >
+        <div>
+          <p class="font-medium">{controller.name}</p>
+          <p class="text-sm text-zinc-500">
+            Phone ID: {controller.phone_id}{if controller.description,
+              do: " · " <> controller.description}
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button phx-click="toggle" phx-value-id={controller.id} class="text-sm text-zinc-600">
+            {if controller.enabled, do: "Disable", else: "Enable"}
+          </button>
+          <button
+            phx-click="edit"
+            phx-value-id={controller.id}
+            class="text-sm text-emerald-700"
+          >Edit</button><button
+            phx-click="delete"
+            phx-value-id={controller.id}
+            data-confirm="Delete this controller?"
+            class="text-sm text-red-600"
+          >Delete</button>
+        </div>
+      </div>
+      <p :if={@controllers == []} class="p-6 text-sm text-zinc-500">No controllers registered.</p>
+    </div>
+  </div>
+</main>
