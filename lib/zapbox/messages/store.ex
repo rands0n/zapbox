@@ -27,17 +27,12 @@ defmodule Zapbox.Messages.Store do
       {:error, {:already_started, :mnesia}} -> :ok
     end
 
-    case :mnesia.create_table(@table,
-           attributes: [:id, :message],
-           disc_copies: [node()],
-           type: :set
-         ) do
-      {:atomic, :ok} -> :ok
-      {:aborted, {:already_exists, @table}} -> :ok
+    with :ok <- create_table(),
+         :ok <- wait_for_table() do
+      {:ok, %{}}
+    else
+      {:error, reason} -> {:stop, reason}
     end
-
-    :ok = :mnesia.wait_for_tables([@table], 5_000)
-    {:ok, %{}}
   end
 
   def insert(%Message{} = message) do
@@ -74,8 +69,71 @@ defmodule Zapbox.Messages.Store do
   defp ensure_node do
     if node() == :nonode@nohost do
       System.cmd("epmd", ["-daemon"])
-      name = String.to_atom("zapbox_#{System.unique_integer([:positive])}")
+      name = Application.get_env(:zapbox, :mnesia_node_name, :zapbox)
       {:ok, _} = :net_kernel.start([name, :shortnames])
+    end
+  end
+
+  defp create_table do
+    case :mnesia.create_table(@table,
+           attributes: [:id, :message],
+           disc_copies: [node()],
+           type: :set
+         ) do
+      {:atomic, :ok} -> :ok
+      {:aborted, {:already_exists, @table}} -> :ok
+      {:aborted, reason} -> {:error, {:create_table_failed, @table, reason}}
+    end
+  end
+
+  defp wait_for_table do
+    case :mnesia.wait_for_tables([@table], 5_000) do
+      :ok -> :ok
+      {:timeout, [@table]} -> recover_legacy_table()
+      {:timeout, tables} -> {:error, {:tables_unavailable, tables}}
+    end
+  end
+
+  # Versions before 0.1.0 named every local node uniquely. Rejoin the sole
+  # persisted table owner so existing volumes remain readable after upgrading.
+  defp recover_legacy_table do
+    case :mnesia.table_info(@table, :disc_copies) do
+      [legacy_node] -> restart_as_legacy_node(legacy_node)
+      nodes -> {:error, {:table_unavailable, @table, nodes}}
+    end
+  end
+
+  defp restart_as_legacy_node(legacy_node) do
+    _ = :mnesia.stop()
+    _ = :net_kernel.stop()
+
+    [name, host] = legacy_node |> Atom.to_string() |> String.split("@", parts: 2)
+    naming = if String.contains?(host, "."), do: :longnames, else: :shortnames
+
+    case :net_kernel.start([String.to_atom(name), naming]) do
+      {:ok, _pid} ->
+        with :ok <- start_mnesia(),
+             :ok <- wait_for_legacy_table() do
+          :ok
+        end
+
+      {:error, reason} ->
+        {:error, {:legacy_node_start_failed, legacy_node, reason}}
+    end
+  end
+
+  defp start_mnesia do
+    case :mnesia.start() do
+      :ok -> :ok
+      {:error, {:already_started, :mnesia}} -> :ok
+      {:error, reason} -> {:error, {:mnesia_start_failed, reason}}
+    end
+  end
+
+  defp wait_for_legacy_table do
+    case :mnesia.wait_for_tables([@table], 5_000) do
+      :ok -> :ok
+      {:timeout, tables} -> {:error, {:tables_unavailable, tables}}
     end
   end
 end

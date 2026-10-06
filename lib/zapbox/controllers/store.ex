@@ -19,8 +19,10 @@ defmodule Zapbox.Controllers.Store do
       {:aborted, {:already_exists, @table}} -> :ok
     end
 
-    :ok = :mnesia.wait_for_tables([@table], 5_000)
-    {:ok, %{}}
+    case :mnesia.wait_for_tables([@table], 5_000) do
+      :ok -> {:ok, %{}}
+      {:timeout, tables} -> {:stop, {:tables_unavailable, tables}}
+    end
   end
 
   def list,
