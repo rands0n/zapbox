@@ -1,0 +1,14 @@
+services:
+  zapbox:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      SECRET_KEY_BASE: YD&S*(AHDUEWHD*&HHD&S*HADEW&*DHUSAHDBNJDKIHU&)
+      DATA_DIR: /data
+      MAX_MESSAGES: 500
+    volumes:
+      - zapbox_data:/data
+
+volumes:
+  zapbox_data:
