@@ -9,6 +9,31 @@ Run locally with `mix phx.server`, or use `docker compose -f docker-compose.exam
 Persist Mnesia data by mounting `/data`. Controllers are lightweight local metadata
 for known sender phone IDs and can be managed at `/controllers` or through `/api/controllers`.
 
+## Docker image
+
+Release images are published to GitHub Container Registry. For local development:
+
+```yaml
+services:
+  zapbox:
+    image: ghcr.io/<owner>/zapbox:latest
+    ports:
+      - "4003:4000"
+    volumes:
+      - zapbox-data:/data
+
+volumes:
+  zapbox-data:
+```
+
+Stable or shared environments should pin a release, for example
+`ghcr.io/<owner>/zapbox:0.2.4`; reserve `latest` for local development.
+
+Merging a pull request into `main` creates a patch release by default. Apply one
+of these labels to control the increment: `release:major`, `release:minor`, or
+`release:patch`. If multiple labels exist, major takes precedence over minor,
+which takes precedence over patch.
+
 To start your Phoenix server:
 
 * Run `mix setup` to install and setup dependencies
