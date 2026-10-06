@@ -91,12 +91,17 @@
             phx-click="edit"
             phx-value-id={controller.id}
             class="text-sm text-emerald-700"
-          >Edit</button><button
+          >
+            Edit
+          </button>
+          <button
             phx-click="delete"
             phx-value-id={controller.id}
             data-confirm="Delete this controller?"
             class="text-sm text-red-600"
-          >Delete</button>
+          >
+            Delete
+          </button>
         </div>
       </div>
       <p :if={@controllers == []} class="p-6 text-sm text-zinc-500">No controllers registered.</p>
