@@ -69,7 +69,8 @@ defmodule Zapbox.Messages.Store do
   defp ensure_node do
     if node() == :nonode@nohost do
       System.cmd("epmd", ["-daemon"])
-      {:ok, _} = :net_kernel.start([:zapbox, :shortnames])
+      name = Application.get_env(:zapbox, :mnesia_node_name, :zapbox)
+      {:ok, _} = :net_kernel.start([name, :shortnames])
     end
   end
 
