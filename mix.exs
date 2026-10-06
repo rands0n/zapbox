@@ -21,7 +21,8 @@ defmodule Zapbox.MixProject do
   def application do
     [
       mod: {Zapbox.Application, []},
-      extra_applications: [:logger, :runtime_tools, :mnesia]
+      extra_applications: [:logger, :runtime_tools],
+      included_applications: [:mnesia]
     ]
   end
 
